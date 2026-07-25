@@ -517,7 +517,7 @@ if page == "Overview":
     )
 
     metric_3.metric(
-        "Median members",
+        "Median audience size",
         format_integer(
             safe_median(
                 filtered_df,

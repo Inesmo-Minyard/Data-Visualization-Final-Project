@@ -1633,12 +1633,6 @@ elif page == "Methodology":
 
     st.markdown(
         """
-        ### Main research question
-
-        **How are anime characteristics associated with
-        popularity, user ratings, and audience loyalty,
-        and how have these relationships changed over time?**
-
         ### Core measures
 
         - **Audience reach:** number of MyAnimeList members.

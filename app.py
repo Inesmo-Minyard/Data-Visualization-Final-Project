@@ -322,6 +322,13 @@ st.markdown(
     atmosphere, historical period, studio, and content
     characteristics are associated with audience reach,
     user ratings, and viewer loyalty.
+
+    ### Main research question
+
+    **How are anime characteristics associated with
+    popularity, user ratings, and audience loyalty,
+    and how have these relationships changed over time?**
+
     """
 )
 

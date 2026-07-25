@@ -1380,7 +1380,7 @@ elif page == "Studios":
                 },
                 labels={
                     "anime_count": (
-                        "Number of analysed titles"
+                        "Number of titles analyzed for each studio"
                     ),
                     "median_score": (
                         "Median user score"

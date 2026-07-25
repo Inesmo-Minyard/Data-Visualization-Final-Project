@@ -507,7 +507,7 @@ if page == "Overview":
     )
 
     metric_2.metric(
-        "Median score",
+        "Rating median score",
         format_decimal(
             safe_median(
                 filtered_df,

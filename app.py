@@ -322,13 +322,6 @@ st.markdown(
     atmosphere, historical period, studio, and content
     characteristics are associated with audience reach,
     user ratings, and viewer loyalty.
-
-    ### Main research question
-
-    **How are anime characteristics associated with
-    popularity, user ratings, and audience loyalty,
-    and how have these relationships changed over time?**
-
     """
 )
 
@@ -514,7 +507,7 @@ if page == "Overview":
     )
 
     metric_2.metric(
-        "Rating median score",
+        "Median score",
         format_decimal(
             safe_median(
                 filtered_df,
@@ -524,7 +517,7 @@ if page == "Overview":
     )
 
     metric_3.metric(
-        "Median audience size",
+        "Median members",
         format_integer(
             safe_median(
                 filtered_df,
@@ -1387,7 +1380,7 @@ elif page == "Studios":
                 },
                 labels={
                     "anime_count": (
-                        "Number of titles analyzed for each studio"
+                        "Number of analysed titles"
                     ),
                     "median_score": (
                         "Median user score"
@@ -1463,656 +1456,165 @@ elif page == "Genre–Theme Combinations":
 
     st.markdown(
         """
-        This section identifies genre–theme combinations
-        that balance strong user ratings, broad audience
-        reach, and sufficient representation.
-
-        The results are recalculated dynamically from the
-        currently selected global filters.
+        This section identifies combinations that balance
+        high user ratings, broad audience reach, and
+        sufficient production volume.
         """
     )
 
-    required_columns = {
-        "mal_id",
-        "genres",
-        "themes",
-        "score",
-        "members",
-    }
+    if not genre_theme_df.empty:
+        genre_plot_df = genre_theme_df.copy()
 
-    if not required_columns.issubset(filtered_df.columns):
-        missing_columns = sorted(
-            required_columns
-            - set(filtered_df.columns)
-        )
-
-        st.error(
-            "The processed dataset is missing the following "
-            f"columns: {', '.join(missing_columns)}"
-        )
-
-        st.stop()
-
-    # --------------------------------------------------------
-    # Prepare genre and theme lists
-    # --------------------------------------------------------
-
-    genre_theme_source = filtered_df[
-        [
-            "mal_id",
-            "title",
-            "score",
-            "members",
-            "scored_by",
-            "genres",
-            "themes",
-            "atmosphere",
-            "type",
-            "release_year",
-        ]
-    ].copy()
-
-    genre_theme_source["genres_list"] = (
-        genre_theme_source["genres"]
-        .apply(parse_pipe_list)
-    )
-
-    genre_theme_source["themes_list"] = (
-        genre_theme_source["themes"]
-        .apply(parse_pipe_list)
-    )
-
-    # Remove titles without genres or themes
-    genre_theme_source = genre_theme_source[
-        genre_theme_source["genres_list"].map(len) > 0
-    ].copy()
-
-    genre_theme_source = genre_theme_source[
-        genre_theme_source["themes_list"].map(len) > 0
-    ].copy()
-
-    if genre_theme_source.empty:
-        st.warning(
-            "No titles with both genre and theme information "
-            "remain after applying the selected filters."
-        )
-
-        st.stop()
-
-    # --------------------------------------------------------
-    # Create one row for every genre–theme combination
-    # --------------------------------------------------------
-
-    genre_theme_long = (
-        genre_theme_source
-        .explode("genres_list")
-        .rename(
-            columns={
-                "genres_list": "genre",
-            }
-        )
-    )
-
-    genre_theme_long = (
-        genre_theme_long
-        .explode("themes_list")
-        .rename(
-            columns={
-                "themes_list": "theme",
-            }
-        )
-    )
-
-    genre_theme_long = genre_theme_long[
-        genre_theme_long["genre"].notna()
-        & genre_theme_long["theme"].notna()
-        & genre_theme_long["genre"].ne("")
-        & genre_theme_long["theme"].ne("")
-    ].copy()
-
-    genre_theme_long["genre_theme"] = (
-        genre_theme_long["genre"]
-        + " + "
-        + genre_theme_long["theme"]
-    )
-
-    # Remove accidental duplicate combinations for one anime
-    genre_theme_long = genre_theme_long.drop_duplicates(
-        subset=[
-            "mal_id",
-            "genre",
-            "theme",
-        ]
-    )
-
-    # --------------------------------------------------------
-    # Combination-size control
-    # --------------------------------------------------------
-
-    combination_counts = (
-        genre_theme_long
-        .groupby(
-            [
-                "genre",
-                "theme",
-                "genre_theme",
-            ]
-        )
-        .agg(
-            anime_count=(
-                "mal_id",
-                "nunique",
-            )
-        )
-        .reset_index()
-    )
-
-    largest_combination_size = int(
-        combination_counts["anime_count"].max()
-    )
-
-    maximum_group_threshold = max(
-        3,
-        min(
-            50,
-            largest_combination_size,
-        ),
-    )
-
-    default_group_threshold = min(
-        20,
-        maximum_group_threshold,
-    )
-
-    minimum_combination_size = st.slider(
-        "Minimum number of anime per combination",
-        min_value=3,
-        max_value=maximum_group_threshold,
-        value=default_group_threshold,
-        step=1,
-        help=(
-            "Higher values produce more reliable group "
-            "summaries but remove less common combinations."
-        ),
-    )
-
-    # --------------------------------------------------------
-    # Calculate dynamic combination statistics
-    # --------------------------------------------------------
-
-    genre_theme_summary = (
-        genre_theme_long
-        .groupby(
-            [
-                "genre",
-                "theme",
-                "genre_theme",
-            ]
-        )
-        .agg(
-            anime_count=(
-                "mal_id",
-                "nunique",
-            ),
-            median_score=(
-                "score",
-                "median",
-            ),
-            mean_score=(
-                "score",
-                "mean",
-            ),
-            median_members=(
-                "members",
-                "median",
-            ),
-            lower_quartile_score=(
-                "score",
-                lambda values: values.quantile(0.25),
-            ),
-            upper_quartile_score=(
-                "score",
-                lambda values: values.quantile(0.75),
-            ),
-        )
-        .reset_index()
-    )
-
-    genre_theme_summary = genre_theme_summary[
-        genre_theme_summary["anime_count"]
-        >= minimum_combination_size
-    ].copy()
-
-    genre_theme_summary = genre_theme_summary.dropna(
-        subset=[
+        numeric_genre_columns = [
+            "anime_count",
             "median_score",
             "median_members",
-        ]
-    )
-
-    genre_theme_summary = genre_theme_summary[
-        genre_theme_summary["median_members"] > 0
-    ].copy()
-
-    if genre_theme_summary.empty:
-        st.warning(
-            "No genre–theme combinations meet the current "
-            "filters and minimum group-size requirement. "
-            "Reduce the minimum number of anime or broaden "
-            "the global filters."
-        )
-
-        st.stop()
-
-    # --------------------------------------------------------
-    # Create percentile-based success index
-    # --------------------------------------------------------
-
-    genre_theme_summary["score_percentile"] = (
-        genre_theme_summary["median_score"]
-        .rank(
-            pct=True,
-            method="average",
-        )
-        * 100
-    )
-
-    genre_theme_summary["audience_percentile"] = (
-        genre_theme_summary["median_members"]
-        .rank(
-            pct=True,
-            method="average",
-        )
-        * 100
-    )
-
-    genre_theme_summary["success_index"] = (
-        genre_theme_summary["score_percentile"]
-        + genre_theme_summary["audience_percentile"]
-    ) / 2
-
-    genre_theme_summary["log_median_members"] = np.log10(
-        genre_theme_summary["median_members"]
-    )
-
-    # --------------------------------------------------------
-    # Define analytical quadrants
-    # --------------------------------------------------------
-
-    overall_median_score = (
-        genre_theme_summary["median_score"]
-        .median()
-    )
-
-    overall_median_members = (
-        genre_theme_summary["median_members"]
-        .median()
-    )
-
-    overall_log_members = np.log10(
-        overall_median_members
-    )
-
-    conditions = [
-        (
-            genre_theme_summary["median_score"]
-            >= overall_median_score
-        )
-        & (
-            genre_theme_summary["median_members"]
-            >= overall_median_members
-        ),
-        (
-            genre_theme_summary["median_score"]
-            >= overall_median_score
-        )
-        & (
-            genre_theme_summary["median_members"]
-            < overall_median_members
-        ),
-        (
-            genre_theme_summary["median_score"]
-            < overall_median_score
-        )
-        & (
-            genre_theme_summary["median_members"]
-            >= overall_median_members
-        ),
-    ]
-
-    categories = [
-        "High rating, large audience",
-        "High rating, smaller audience",
-        "Lower rating, large audience",
-    ]
-
-    genre_theme_summary["success_category"] = np.select(
-        conditions,
-        categories,
-        default="Lower rating, smaller audience",
-    )
-
-    category_colors = {
-        "High rating, large audience": "#0072B2",
-        "High rating, smaller audience": "#009E73",
-        "Lower rating, large audience": "#E69F00",
-        "Lower rating, smaller audience": "#B8B8B8",
-    }
-
-    # --------------------------------------------------------
-    # Page metrics
-    # --------------------------------------------------------
-
-    strongest_combination = (
-        genre_theme_summary
-        .sort_values(
             "success_index",
-            ascending=False,
-        )
-        .iloc[0]
-    )
-
-    metric_1, metric_2, metric_3, metric_4 = st.columns(4)
-
-    metric_1.metric(
-        "Combinations analysed",
-        f"{len(genre_theme_summary):,}",
-    )
-
-    metric_2.metric(
-        "Anime represented",
-        f"{genre_theme_long['mal_id'].nunique():,}",
-    )
-
-    metric_3.metric(
-        "Top combination",
-        strongest_combination["genre_theme"],
-    )
-
-    metric_4.metric(
-        "Top success index",
-        f"{strongest_combination['success_index']:.1f}",
-    )
-
-    # --------------------------------------------------------
-    # Select how many combinations should be displayed
-    # --------------------------------------------------------
-
-    maximum_display_count = min(
-        40,
-        len(genre_theme_summary),
-    )
-
-    minimum_display_count = min(
-        5,
-        maximum_display_count,
-    )
-
-    default_display_count = min(
-        15,
-        maximum_display_count,
-    )
-
-    display_count = st.slider(
-        "Number of top combinations to display",
-        min_value=minimum_display_count,
-        max_value=maximum_display_count,
-        value=default_display_count,
-        step=1,
-    )
-
-    genre_theme_display = (
-        genre_theme_summary
-        .sort_values(
-            "success_index",
-            ascending=False,
-        )
-        .head(display_count)
-        .copy()
-    )
-
-    # Label only the strongest combinations
-    label_count = min(
-        10,
-        len(genre_theme_display),
-    )
-
-    labelled_combinations = set(
-        genre_theme_display
-        .nlargest(
-            label_count,
-            "success_index",
-        )["genre_theme"]
-        .tolist()
-    )
-
-    genre_theme_display["chart_label"] = np.where(
-        genre_theme_display["genre_theme"].isin(
-            labelled_combinations
-        ),
-        genre_theme_display["genre_theme"],
-        "",
-    )
-
-    # --------------------------------------------------------
-    # Main bubble chart
-    # --------------------------------------------------------
-
-    fig_genre_theme = px.scatter(
-        genre_theme_display,
-        x="log_median_members",
-        y="median_score",
-        size="anime_count",
-        color="success_category",
-        text="chart_label",
-        size_max=55,
-        color_discrete_map=category_colors,
-        custom_data=[
-            "genre_theme",
-            "genre",
-            "theme",
-            "median_members",
-            "anime_count",
-            "mean_score",
-            "lower_quartile_score",
-            "upper_quartile_score",
-            "success_index",
-        ],
-        labels={
-            "log_median_members": (
-                "Typical audience size, "
-                "log10(median MAL users)"
-            ),
-            "median_score": "Median user score",
-            "success_category": "Combination profile",
-            "anime_count": "Anime titles",
-        },
-    )
-
-    fig_genre_theme.add_vline(
-        x=overall_log_members,
-        line_width=1.5,
-        line_dash="dash",
-        line_color="#777777",
-    )
-
-    fig_genre_theme.add_hline(
-        y=overall_median_score,
-        line_width=1.5,
-        line_dash="dash",
-        line_color="#777777",
-    )
-
-    fig_genre_theme.update_traces(
-        marker={
-            "opacity": 0.80,
-            "line": {
-                "width": 1.5,
-                "color": "white",
-            },
-        },
-        textposition="top center",
-        textfont={
-            "size": 10,
-        },
-        hovertemplate=(
-            "<b>%{customdata[0]}</b><br>"
-            "Genre: %{customdata[1]}<br>"
-            "Theme: %{customdata[2]}<br>"
-            "Median score: %{y:.2f}<br>"
-            "Mean score: %{customdata[5]:.2f}<br>"
-            "Median MAL audience: "
-            "%{customdata[3]:,.0f}<br>"
-            "Anime titles: %{customdata[4]:,.0f}<br>"
-            "Middle 50% of scores: "
-            "%{customdata[6]:.2f}–"
-            "%{customdata[7]:.2f}<br>"
-            "Success index: %{customdata[8]:.1f}"
-            "<extra></extra>"
-        ),
-    )
-
-    fig_genre_theme = apply_chart_style(
-        fig_genre_theme,
-        title=(
-            "Only some genre–theme combinations combine "
-            "broad reach with strong ratings"
-        ),
-        subtitle=(
-            "Results respond to atmosphere, format, year, "
-            "and minimum-rating filters"
-        ),
-        height=730,
-    )
-
-    fig_genre_theme.update_layout(
-        legend={
-            "orientation": "h",
-            "yanchor": "bottom",
-            "y": 1.02,
-            "xanchor": "left",
-            "x": 0,
-        }
-    )
-
-    st.plotly_chart(
-        fig_genre_theme,
-        use_container_width=True,
-    )
-
-    # --------------------------------------------------------
-    # Ranked bar chart
-    # --------------------------------------------------------
-
-    st.subheader("Highest-performing combinations")
-
-    ranked_combinations = (
-        genre_theme_display
-        .sort_values(
-            "success_index",
-            ascending=True,
-        )
-    )
-
-    fig_genre_rank = px.bar(
-        ranked_combinations,
-        x="success_index",
-        y="genre_theme",
-        orientation="h",
-        color="success_category",
-        color_discrete_map=category_colors,
-        text="success_index",
-        custom_data=[
-            "median_score",
-            "median_members",
-            "anime_count",
             "score_percentile",
             "audience_percentile",
-        ],
-        labels={
-            "success_index": (
-                "Genre–theme success index"
-            ),
-            "genre_theme": "",
-            "success_category": "",
-        },
-    )
-
-    fig_genre_rank.update_traces(
-        texttemplate="%{x:.1f}",
-        textposition="outside",
-        cliponaxis=False,
-        hovertemplate=(
-            "<b>%{y}</b><br>"
-            "Success index: %{x:.1f}<br>"
-            "Median score: %{customdata[0]:.2f}<br>"
-            "Median MAL audience: "
-            "%{customdata[1]:,.0f}<br>"
-            "Anime titles: %{customdata[2]:,.0f}<br>"
-            "Score percentile: %{customdata[3]:.1f}<br>"
-            "Audience percentile: %{customdata[4]:.1f}"
-            "<extra></extra>"
-        ),
-    )
-
-    fig_genre_rank = apply_chart_style(
-        fig_genre_rank,
-        title=(
-            "Leading combinations balance rating "
-            "and audience reach"
-        ),
-        subtitle=(
-            "Success index gives equal weight to "
-            "rating and audience percentiles"
-        ),
-        height=max(
-            550,
-            display_count * 33 + 180,
-        ),
-    )
-
-    fig_genre_rank.update_layout(
-        showlegend=False
-    )
-
-    st.plotly_chart(
-        fig_genre_rank,
-        use_container_width=True,
-    )
-
-    # --------------------------------------------------------
-    # Dynamic result table
-    # --------------------------------------------------------
-
-    st.subheader("Combination details")
-
-    display_table = (
-        genre_theme_summary[
-            [
-                "genre_theme",
-                "genre",
-                "theme",
-                "anime_count",
-                "median_score",
-                "mean_score",
-                "median_members",
-                "score_percentile",
-                "audience_percentile",
-                "success_index",
-                "success_category",
-            ]
         ]
-        .sort_values(
-            "success_index",
-            ascending=False,
-        )
-    )
 
-    st.dataframe(
-        display_table,
-        use_container_width=True,
-        hide_index=True,
-    )
+        for column in numeric_genre_columns:
+            if column in genre_plot_df.columns:
+                genre_plot_df[column] = pd.to_numeric(
+                    genre_plot_df[column],
+                    errors="coerce",
+                )
+
+        required_genre_columns = {
+            "genre_theme",
+            "anime_count",
+            "median_score",
+            "median_members",
+        }
+
+        if required_genre_columns.issubset(
+            genre_plot_df.columns
+        ):
+            genre_plot_df = genre_plot_df.dropna(
+                subset=[
+                    "median_score",
+                    "median_members",
+                ]
+            )
+
+            genre_plot_df[
+                "log_median_members"
+            ] = np.log10(
+                genre_plot_df[
+                    "median_members"
+                ].clip(lower=1)
+            )
+
+            if "success_index" in genre_plot_df.columns:
+                genre_plot_df = genre_plot_df.sort_values(
+                    "success_index",
+                    ascending=False,
+                )
+
+            top_genre_count = st.slider(
+                "Number of combinations",
+                min_value=5,
+                max_value=min(
+                    30,
+                    len(genre_plot_df),
+                ),
+                value=min(
+                    15,
+                    len(genre_plot_df),
+                ),
+            )
+
+            genre_display_df = genre_plot_df.head(
+                top_genre_count
+            )
+
+            fig_genre_theme = px.scatter(
+                genre_display_df,
+                x="log_median_members",
+                y="median_score",
+                size="anime_count",
+                color="genre_theme",
+                text="genre_theme",
+                size_max=55,
+                color_discrete_sequence=CVD_COLORS,
+                hover_name="genre_theme",
+                hover_data={
+                    "log_median_members": False,
+                    "median_members": ":,.0f",
+                    "median_score": ":.2f",
+                    "anime_count": ":,",
+                    "success_index": ":.1f"
+                    if "success_index"
+                    in genre_display_df.columns
+                    else False,
+                },
+                labels={
+                    "log_median_members": (
+                        "Typical audience size, "
+                        "log10(median members)"
+                    ),
+                    "median_score": "Median user score",
+                    "anime_count": "Anime titles",
+                    "genre_theme": (
+                        "Genre–theme combination"
+                    ),
+                },
+            )
+
+            fig_genre_theme.update_traces(
+                marker={
+                    "opacity": 0.80,
+                    "line": {
+                        "width": 1.5,
+                        "color": "white",
+                    },
+                },
+                textposition="top center",
+                textfont={
+                    "size": 10,
+                },
+            )
+
+            fig_genre_theme = apply_chart_style(
+                fig_genre_theme,
+                title=(
+                    "Only some genre–theme combinations "
+                    "combine broad reach with strong ratings"
+                ),
+                subtitle=(
+                    "Bubble size represents the number of titles"
+                ),
+                height=720,
+            )
+
+            fig_genre_theme.update_layout(
+                showlegend=False
+            )
+
+            st.plotly_chart(
+                fig_genre_theme,
+                use_container_width=True,
+            )
+
+            st.dataframe(
+                genre_display_df,
+                use_container_width=True,
+                hide_index=True,
+            )
+
+        else:
+            st.warning(
+                "genre_theme_leaders.csv does not contain "
+                "the expected columns."
+            )
+
+    else:
+        st.info(
+            "genre_theme_leaders.csv was not found. "
+            "Export it from the notebook and place it "
+            "next to app.py."
+        )
 
 
 # ============================================================
@@ -2124,6 +1626,12 @@ elif page == "Methodology":
 
     st.markdown(
         """
+        ### Main research question
+
+        **How are anime characteristics associated with
+        popularity, user ratings, and audience loyalty,
+        and how have these relationships changed over time?**
+
         ### Core measures
 
         - **Audience reach:** number of MyAnimeList members.
